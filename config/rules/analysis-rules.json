@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "supportedIspin": [1],
+  "bandEdgeModel": "closed-shell-electron-count",
+  "plot": {
+    "width": 1500,
+    "height": 950,
+    "margin": { "left": 110, "right": 55, "top": 115, "bottom": 95 },
+    "energyWindowEv": { "minimum": -6, "maximum": 5 },
+    "colors": {
+      "valence": "#315f9d",
+      "conduction": "#b14f4f",
+      "vbm": "#1e4f91",
+      "cbm": "#a33f3f",
+      "gap": "#8a5a00"
+    },
+    "lineWidth": { "edge": 2.2, "other": 1.05 },
+    "opacity": { "edge": 0.98, "other": 0.66 }
+  }
+}

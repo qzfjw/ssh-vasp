@@ -1,0 +1,4 @@
+interface:
+  display_name: "Yang/Lan HPC VASP"
+  short_description: "管理 Yang/Lan VASP 作业、能带链、下载与分析"
+  default_prompt: "使用 $fang-ssh-skill 选择 Yang 或 Lan，校验输入并提交、监控、下载或分析 VASP 计算；能带任务优先使用 Relax→SCF→Band 安全依赖链。"

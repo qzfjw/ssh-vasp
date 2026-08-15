@@ -1,0 +1,79 @@
+#!/bin/bash
+#SBATCH --job-name={{JOB_NAME}}
+#SBATCH --nodes=1
+#SBATCH --ntasks={{CORES}}
+#SBATCH --partition={{PARTITION}}
+{{MEMORY_DIRECTIVE}}
+#SBATCH --time={{WALLTIME}}
+#SBATCH --output=slurm-%j.out
+#SBATCH --error=slurm-%j.err
+
+set -o pipefail
+
+slurm_bin="{{SLURM_BIN}}"
+oneapi_setup="{{ONEAPI_SETUP}}"
+vasp_bin="{{VASP_BIN}}"
+mpi_launcher="{{MPI_LAUNCHER}}"
+vasp_executable="$vasp_bin/{{VASP_EXECUTABLE}}"
+
+export PATH="$slurm_bin:/usr/bin:/bin:/usr/local/bin:/usr/sbin:/sbin:$PATH"
+export OMP_NUM_THREADS=1
+
+if [[ -n "$oneapi_setup" ]]; then
+    if [[ ! -f "$oneapi_setup" ]]; then
+        echo "ERROR: oneAPI setup file does not exist: $oneapi_setup" >&2
+        exit 2
+    fi
+    source "$oneapi_setup" intel64 --force >/dev/null
+fi
+
+if [[ ! -x "$slurm_bin/srun" ]]; then
+    echo "ERROR: SLURM launcher is not executable: $slurm_bin/srun" >&2
+    exit 2
+fi
+
+if [[ ! -x "$mpi_launcher" ]]; then
+    echo "ERROR: MPI launcher is not executable: $mpi_launcher" >&2
+    exit 2
+fi
+
+if [[ ! -x "$vasp_executable" ]]; then
+    echo "ERROR: VASP executable is not executable: $vasp_executable" >&2
+    exit 2
+fi
+
+export PATH="$slurm_bin:$vasp_bin:$PATH"
+
+cd "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is not set}"
+
+if [[ -f prepare_stage.sh ]]; then
+    if [[ ! -s prepare_stage.sh ]]; then
+        echo "ERROR: prepare_stage.sh exists but is empty" >&2
+        exit 2
+    fi
+    bash prepare_stage.sh
+fi
+
+for required_file in INCAR POSCAR KPOINTS POTCAR; do
+    if [[ ! -s "$required_file" ]]; then
+        echo "ERROR: missing or empty $required_file" >&2
+        exit 2
+    fi
+done
+
+echo "Job ID: ${SLURM_JOB_ID:-unknown}"
+echo "Job name: ${SLURM_JOB_NAME:-unknown}"
+echo "Node list: ${SLURM_JOB_NODELIST:-unknown}"
+echo "MPI tasks: ${SLURM_NTASKS:-unknown}"
+echo "Working directory: $PWD"
+echo "SLURM bin: $slurm_bin"
+echo "MPI launcher: $mpi_launcher"
+echo "VASP executable: $vasp_executable"
+echo "Started at: $(date --iso-8601=seconds)"
+
+"$mpi_launcher" -np "${SLURM_NTASKS:?SLURM_NTASKS is not set}" "$vasp_executable"
+exit_code=$?
+
+echo "Finished at: $(date --iso-8601=seconds)"
+echo "VASP exit code: $exit_code"
+exit "$exit_code"

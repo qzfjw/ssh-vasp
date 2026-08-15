@@ -1,0 +1,12 @@
+# Per-user credentials and server topology
+config/local.psd1
+config/servers.local.psd1
+
+# Generated calculation data and caches
+__pycache__/
+*.pyc
+node_modules/
+downloaded_results/
+POTCAR
+WAVECAR
+CHGCAR
