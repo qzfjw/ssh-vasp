@@ -6,20 +6,52 @@
 
 ## 安装
 
-仓库根目录就是一个完整的 Codex skill。推荐使用 Codex 自带的 skill 安装器：
+仓库根目录就是一个完整的 Codex skill。
+
+### 推荐：Codex 对话安装
+
+在 Codex 中新建任务并发送：
+
+```text
+请使用 $skill-installer 从 GitHub 仓库 qzfjw/ssh-vasp 安装 Skill。
+仓库根目录就是 Skill 目录，安装名称为 fang_ssh_skill。
+安装完成后检查 SKILL.md 是否可识别，并告诉我下一步如何配置 Yang/Lan SSH。
+```
+
+安装完成后，新建一个 Codex 任务并发送：
+
+```text
+使用 $fang-ssh-skill 帮我配置 yang-login 和 lan-login 的 SSH 免密登录。
+```
+
+只使用其中一台服务器时，可以在第二条消息中只指定 `yang-login` 或 `lan-login`。
+
+### 备用：PowerShell 安装
+
+也可以直接调用 Codex 自带的 skill 安装器：
 
 ```powershell
 $Installer = Join-Path $HOME '.codex\skills\.system\skill-installer\scripts\install-skill-from-github.py'
 python $Installer --repo qzfjw/ssh-vasp --path . --name fang_ssh_skill
 ```
 
-也可以直接克隆，便于后续使用 `git pull` 更新：
+若目标目录已经存在，请先备份现有 skill；安装器不会覆盖已有目录。
+
+### 备用：Git 克隆
+
+需要通过 `git pull` 持续更新时，可以直接克隆：
 
 ```powershell
 git clone https://github.com/qzfjw/ssh-vasp.git "$HOME/.codex/skills/fang_ssh_skill"
 ```
 
-安装后在下一次 Codex 对话中使用。若目标目录已经存在，请先备份现有 skill；安装器不会覆盖已有目录。
+后续更新：
+
+```powershell
+git -C "$HOME/.codex/skills/fang_ssh_skill" pull --ff-only
+```
+
+安装或更新后，请在下一次 Codex 对话中使用该 skill。
 
 ## 首次配置
 
