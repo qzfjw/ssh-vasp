@@ -4,7 +4,7 @@
 
 - Skill 只使用固定 SSH 别名 `yang-login` 和 `lan-login`。
 - 每个用户的实际远程用户名、私钥路径和认证方式保存在 `%USERPROFILE%\.ssh\config`。
-- `config/servers.psd1` 是公开模板；真实服务器地址写入不入库的 `config/servers.local.psd1`，且不保存用户密码或私钥。
+- `config/servers.psd1` 保存组内共享的 Yang/Lan 地址和运行环境；个人覆盖写入不入库的 `config/servers.local.psd1`，且不保存用户密码或私钥。
 - 配置向导只管理带 `# BEGIN CODEX VASP:` 和 `# END CODEX VASP:` 标记的配置块。
 - 已存在但未受管理的同名 `Host` 块必须由用户确认后才能接管。
 

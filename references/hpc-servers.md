@@ -2,7 +2,7 @@
 
 ## 服务器定义
 
-服务器模板保存在 `config/servers.psd1`；存在 `config/servers.local.psd1` 时脚本优先加载本地文件：
+组内公共服务器配置保存在 `config/servers.psd1`；存在 `config/servers.local.psd1` 时脚本优先加载本地覆盖：
 
 | 选择名 | SSH 别名 | 工作目录 |
 |---|---|---|

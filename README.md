@@ -23,17 +23,19 @@ git clone https://github.com/qzfjw/ssh-vasp.git "$HOME/.codex/skills/fang_ssh_sk
 
 ## 首次配置
 
-公开仓库不保存 API Key、用户名、私钥或服务器内网地址。安装后创建本机配置：
+公开仓库已按组内约定预置 Yang/Lan 服务器地址，但不保存 API Key、用户名或私钥。安装后按需创建本机配置：
 
 ```powershell
 $SkillRoot = Join-Path $HOME '.codex\skills\fang_ssh_skill'
-Copy-Item "$SkillRoot/config/servers.psd1" "$SkillRoot/config/servers.local.psd1"
 Copy-Item "$SkillRoot/config/local.example.psd1" "$SkillRoot/config/local.psd1"
+
+# 可选：只有需要覆盖公共服务器配置时才创建
+Copy-Item "$SkillRoot/config/servers.psd1" "$SkillRoot/config/servers.local.psd1"
 ```
 
 然后：
 
-1. 在 `config/servers.local.psd1` 中填写 Yang/Lan 的真实主机地址，并按实际环境核对 SLURM、VASP、oneAPI 和 MPI 路径。
+1. Yang/Lan 主机地址已写入 `config/servers.psd1`；仅当服务器地址或运行路径与公共配置不同时，才创建并修改 `config/servers.local.psd1`。
 2. 仅在需要 Materials Project 时，在 `config/local.psd1` 中填写个人 API Key。
 3. 运行 `scripts/setup_ssh_hosts.ps1` 配置个人 SSH 用户名和密钥。
 4. 运行 `scripts/check_ssh_hosts.ps1` 与 `scripts/check_vasp_runtime.ps1` 验证环境。
@@ -58,7 +60,7 @@ Skill 推荐安装位置：
 
 | 文件 | 用途 |
 |---|---|
-| `config/servers.psd1` | 可公开的服务器配置模板 |
+| `config/servers.psd1` | 组内共享的 Yang/Lan 服务器地址与运行环境配置 |
 | `config/servers.local.psd1` | 本机服务器地址和路径覆盖；不入库 |
 | `config/local.example.psd1` | Materials Project 本机配置模板 |
 | `config/local.psd1` | 本机 Materials Project API Key；不入库 |
@@ -118,7 +120,7 @@ Common = @{
 |---|---|---|
 | 选择名 | `yang` | `lan` |
 | SSH 别名 | `yang-login` | `lan-login` |
-| 主机地址 | 在 `servers.local.psd1` 中配置 | 在 `servers.local.psd1` 中配置 |
+| 主机地址 | `172.17.19.200` | `192.168.22.201` |
 | `SlurmBin` | `/opt/slurm/bin` | `/usr/bin` |
 | `VaspBin` | `/home/public/vasp.6.5.1/bin` | `/data/yangjianhui_group/share_group_folder_yangjianhui_group/vasp.6.5.1` |
 | `OneApiSetup` | `/home/public/oneapi/setvars.sh` | `/data/industry/oneapi/setvars.sh` |

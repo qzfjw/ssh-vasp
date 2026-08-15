@@ -9,7 +9,7 @@
         yang = @{
             DisplayName = 'Yang'
             SshAlias    = 'yang-login'
-            HostName    = 'CHANGE_ME_YANG_HOST'
+            HostName    = '172.17.19.200'
             Port        = 22
             Settings    = @{
                 SlurmBin     = '/opt/slurm/bin'
@@ -22,7 +22,7 @@
         lan = @{
             DisplayName = 'Lan'
             SshAlias    = 'lan-login'
-            HostName    = 'CHANGE_ME_LAN_HOST'
+            HostName    = '192.168.22.201'
             Port        = 22
             Settings    = @{
                 SlurmBin     = '/usr/bin'
