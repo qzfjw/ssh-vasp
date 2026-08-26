@@ -99,9 +99,11 @@ Skill 推荐安装位置：
 | `config/local.example.psd1` | Materials Project 本机配置模板 |
 | `config/local.psd1` | 本机 Materials Project API Key；不入库 |
 | `config/rules/*.psd1` | 输入、工作流、运行时和下载经验规则 |
+| `config/rules/parameters/*.psd1` | INCAR、KPOINTS 和任务 Profile 参数经验 |
 | `config/rules/analysis-rules.json` | 能带分析与绘图参数 |
 | `config/rules/incidents/` | 已知问题、症状和预防措施 |
 | `scripts/lib/VaspRuleEngine.psm1` | 规则 Schema 校验和递归覆盖合并 |
+| `scripts/resolve_vasp_parameters.ps1` | 按 Relax、SCF、DOS、Band、Phonon 等任务解析推荐 INCAR/KPOINTS 参数 |
 | `scripts/setup_ssh_hosts.ps1` | 首次配置 SSH 别名、密钥和免密登录 |
 | `scripts/check_ssh_hosts.ps1` | 检查 SSH 解析和无人值守登录 |
 | `scripts/check_vasp_runtime.ps1` | 提交前检查 VASP 可执行文件、MPI 动态库和 oneAPI/MPI 版本 |
@@ -119,14 +121,41 @@ Skill 推荐安装位置：
 可变化的 VASP 经验集中保存在 `config/rules/`，执行脚本只保留解析、SSH/SLURM 操作和不可绕过的安全边界：
 
 ```text
-服务器与路径     config/servers.psd1
-运行时兼容性     config/rules/runtime-rules.psd1
-输入与几何       config/rules/input-rules.psd1
-阶段与冒烟检查   config/rules/workflow-rules.psd1
-下载结果清单     config/rules/artifact-rules.psd1
-分析与绘图       config/rules/analysis-rules.json
-历史问题记录     config/rules/incidents/*.psd1
+config/rules/
+├─ input-rules.psd1                 现有文件完整性、几何和计算类型检查
+├─ runtime-rules.psd1               VASP、MPI、oneAPI 和 SLURM 运行时兼容性
+├─ workflow-rules.psd1              Relax→SCF→Band 阶段门控和提交冒烟检查
+├─ artifact-rules.psd1              下载结果清单
+├─ analysis-rules.json              能带分析与绘图参数
+├─ incidents/                       历史问题记录
+└─ parameters/
+   ├─ incar-rules.psd1              INCAR 参数经验
+   ├─ kpoints-rules.psd1            KPOINTS 网格经验
+   └─ profiles.psd1                 Relax、SCF、DOS、Band、Phonon 等组合
+
+references/
+└─ vasp-parameter-rules.md          参数规则的原理、适用范围和例外说明
+
+scripts/
+└─ resolve_vasp_parameters.ps1      按任务解析并展示最终参数建议
 ```
+
+`input-rules.psd1` 与 `parameters/*.psd1` 分工不同：前者用于提交前判断“输入是否明显有问题”，例如缺文件、POTCAR 顺序不匹配、Band 计算没有 `ICHARG=11`；后者用于生成或审阅参数建议，例如普通结构优化的 `NSW=500`、`ISIF=2`，3d 元素时 `LMAXMIX=4`，以及 KPOINTS 各分量与晶格长度乘积不小于 25 的经验。
+
+三个参数规则文件的职责是：
+
+- `incar-rules.psd1` 保存单个 INCAR 参数、任务参数组和元素相关条件规则。例如 Relax 参数组、SCF 参数组，以及含 3d 或 4f/5f 元素时调整 `LMAXMIX`。
+- `kpoints-rules.psd1` 保存 KPOINTS 生成策略。例如默认使用 Gamma-centered 网格、普通任务使用 `N_i * L_i >= 25 Angstrom`，SCF/DOS 可使用更密的目标。
+- `profiles.psd1` 保存任务组合。Codex 或脚本看到 `Relax`、`Scf`、`Dos`、`Band`、`Phonon` 时，先从这里找到对应的 INCAR profile 和 KPOINTS profile，再加载前两个文件得到最终建议。
+
+Codex 使用这些规则时遵循“先加载 profile，再合并参数，再交给用户确认”的流程。`scripts/resolve_vasp_parameters.ps1` 是这个流程的可执行入口，例如：
+
+```powershell
+$SkillRoot = Join-Path $HOME '.codex\skills\fang_ssh_skill'
+& "$SkillRoot/scripts/resolve_vasp_parameters.ps1" -Task Relax -PoscarPath ./POSCAR
+```
+
+该脚本会读取 `config/rules/parameters/profiles.psd1` 选择任务组合，再读取 `incar-rules.psd1` 和 `kpoints-rules.psd1` 输出推荐 INCAR 参数与 KPOINTS 网格。它提供的是经验建议，不替代材料体系所需的收敛性测试、磁矩设置、DFT+U、SOC、vdW 或赝势版本选择。
 
 PowerShell 规则通过 `scripts/lib/VaspRuleEngine.psm1` 加载，支持任务级覆盖文件。优先级为“技能默认规则 < 服务器配置 < 项目覆盖文件 < 用户显式参数”。完整扩展流程见 `references/rule-extension.md`。
 

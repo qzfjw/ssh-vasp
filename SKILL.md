@@ -23,9 +23,11 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 - Materials Project：`references/materials-project.md`
 - SSH 初始化：`references/ssh-onboarding.md`
 - 规则扩展与维护：`references/rule-extension.md`
+- VASP 参数规则：`references/vasp-parameter-rules.md`
 - 选择服务器：`scripts/select_server.ps1 -Server <yang|lan>`
 - 检查 SSH：`scripts/check_ssh_hosts.ps1 -Server <yang|lan>`
 - 提交前检查 VASP/MPI 运行时：`scripts/check_vasp_runtime.ps1 -Server <yang|lan>`
+- 解析 VASP 参数建议：`scripts/resolve_vasp_parameters.ps1 -Task <Relax|Scf|Dos|Band|Phonon>`
 - 生成单任务 SLURM：`scripts/render_slurm.ps1`
 - 输入与几何预检：`scripts/preflight_job.ps1`
 - 生成 Relax→SCF→Band 链：`scripts/render_band_chain.ps1`
