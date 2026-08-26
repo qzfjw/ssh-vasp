@@ -17,6 +17,7 @@
                 OneApiSetup  = '/home/public/oneapi/setvars.sh'
                 Partition    = 'cluster'
                 MpiLauncher  = '/home/public/oneapi/mpi/2021.12/bin/mpiexec'
+                PawPotentialRoot = '/home/shared/potpaw_PBE54'
             }
         }
         lan = @{
@@ -31,6 +32,7 @@
                 Partition    = 'cu'
                 MpiLauncher  = '/data/industry/oneapi/mpi/2021.15/bin/mpiexec'
                 MemoryPerCpu = '7G'
+                PawPotentialRoot = '/data/yangjianhui_group/share_group_folder_yangjianhui_group/potpaw_PBE54'
             }
         }
     }

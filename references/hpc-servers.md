@@ -25,6 +25,7 @@
 | `OneApiSetup` | `/home/public/oneapi/setvars.sh` | `/data/industry/oneapi/setvars.sh` |
 | `Partition` | `cluster` | `cu` |
 | `MpiLauncher` | `/home/public/oneapi/mpi/2021.12/bin/mpiexec` | `/data/industry/oneapi/mpi/2021.15/bin/mpiexec` |
+| `PawPotentialRoot` | `/home/shared/potpaw_PBE54` | `/data/yangjianhui_group/share_group_folder_yangjianhui_group/potpaw_PBE54` |
 | `VaspExecutable` | `vasp_std`（继承 `Common`） | `vasp_std`（继承 `Common`） |
 | `MemoryPerCpu` | 空，不生成内存指令 | `7G` |
 
@@ -55,6 +56,7 @@
 - `$env:VASP_ONEAPI_SETUP`
 - `$env:VASP_PARTITION`
 - `$env:VASP_MPI_LAUNCHER`
+- `$env:VASP_PAW_POTENTIAL_ROOT`
 - `$env:VASP_EXECUTABLE`
 - `$env:VASP_MEMORY_PER_CPU`
 

@@ -74,6 +74,8 @@ Copy-Item "$SkillRoot/config/servers.psd1" "$SkillRoot/config/servers.local.psd1
 
 `config/servers.local.psd1` 和 `config/local.psd1` 已被 `.gitignore` 排除，不得提交到仓库。
 
+更新已有安装时，如果已经创建 `config/servers.local.psd1`，需将公共配置中新增加的必需字段同步到该文件；例如本次新增的 `PawPotentialRoot`。选择脚本会在字段缺失时停止并报告，不会猜测势库路径。
+
 ## 1. 功能与目录
 
 - 配置 SSH 别名、专用密钥和免密登录。
@@ -158,6 +160,7 @@ Common = @{
 | `OneApiSetup` | `/home/public/oneapi/setvars.sh` | `/data/industry/oneapi/setvars.sh` |
 | `Partition` | `cluster` | `cu` |
 | `MpiLauncher` | `/home/public/oneapi/mpi/2021.12/bin/mpiexec` | `/data/industry/oneapi/mpi/2021.15/bin/mpiexec` |
+| `PawPotentialRoot` | `/home/shared/potpaw_PBE54` | `/data/yangjianhui_group/share_group_folder_yangjianhui_group/potpaw_PBE54` |
 | `VaspExecutable` | `vasp_std` | `vasp_std` |
 | `MemoryPerCpu` | 空，不生成内存指令 | `7G` |
 | 远程任务根目录 | `~/vasp_codex` | `~/vasp_codex` |
@@ -259,6 +262,7 @@ VASP_VASP_BIN
 VASP_ONEAPI_SETUP
 VASP_PARTITION
 VASP_MPI_LAUNCHER
+VASP_PAW_POTENTIAL_ROOT
 VASP_EXECUTABLE
 VASP_MEMORY_PER_CPU
 ```
@@ -314,7 +318,7 @@ with MPRester() as mpr:
 structure.to(filename="POSCAR", fmt="poscar")
 ```
 
-Materials Project 不提供可直接用于 VASP 计算的授权 POTCAR。POTCAR 必须来自用户有权使用的 VASP 势库，并与 POSCAR 元素顺序一致。
+Materials Project 不提供可直接用于 VASP 计算的授权 POTCAR。POTCAR 必须来自用户有权使用的 VASP 势库，并与 POSCAR 元素顺序一致。选择服务器后，PBE 5.4 PAW 势库根目录位于 `$env:VASP_PAW_POTENTIAL_ROOT`；具体使用普通、`_pv` 或 `_sv` 等哪个势目录必须明确，不得猜测。
 
 ## 7. 准备输入文件
 
@@ -340,6 +344,7 @@ POTCAR
 - INCAR 与 relax、static 或其他计算类型匹配。
 - KPOINTS、核数和时限符合计算要求。
 - POTCAR 来自用户获授权的势库。
+- 生成 POTCAR 时从 `$env:VASP_PAW_POTENTIAL_ROOT` 读取，并按 POSCAR 元素顺序拼接已明确选择的势目录。
 
 ## 8. 生成 SLURM 脚本
 

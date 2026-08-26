@@ -58,6 +58,7 @@ $requiredSettings = @(
     'OneApiSetup',
     'Partition',
     'MpiLauncher',
+    'PawPotentialRoot',
     'VaspExecutable'
 )
 foreach ($settingName in $requiredSettings) {
@@ -75,6 +76,7 @@ $env:VASP_VASP_BIN = [string]$effectiveSettings.VaspBin
 $env:VASP_ONEAPI_SETUP = [string]$effectiveSettings.OneApiSetup
 $env:VASP_PARTITION = [string]$effectiveSettings.Partition
 $env:VASP_MPI_LAUNCHER = [string]$effectiveSettings.MpiLauncher
+$env:VASP_PAW_POTENTIAL_ROOT = [string]$effectiveSettings.PawPotentialRoot
 $env:VASP_EXECUTABLE = [string]$effectiveSettings.VaspExecutable
 $env:VASP_MEMORY_PER_CPU = [string]$effectiveSettings.MemoryPerCpu
 
@@ -88,6 +90,7 @@ $env:VASP_MEMORY_PER_CPU = [string]$effectiveSettings.MemoryPerCpu
     OneApi     = $env:VASP_ONEAPI_SETUP
     Partition  = $env:VASP_PARTITION
     MpiLauncher = $env:VASP_MPI_LAUNCHER
+    PawPotentialRoot = $env:VASP_PAW_POTENTIAL_ROOT
     Executable = $env:VASP_EXECUTABLE
     MemoryPerCpu = $env:VASP_MEMORY_PER_CPU
 }

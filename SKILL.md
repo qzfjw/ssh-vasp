@@ -12,7 +12,7 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 - 所有主计算必须通过 `sbatch` 提交；每个逻辑操作尽量合并为一次 SSH 调用。
 - 远程任务只允许位于 `~/vasp_codex/<job_name>`，任务名必须匹配 `^[A-Za-z0-9._-]+$`。
 - 默认不覆盖现有目录或文件；覆盖、删除、`scancel` 和重新提交前必须展示目标并获得明确确认。
-- POTCAR 只能来自用户有权使用的 VASP 势库；不得从公共网页或 Materials Project 下载或猜测 POTCAR。
+- POTCAR 只能来自用户有权使用的 VASP 势库；所选服务器的 PBE 5.4 PAW 势库根目录由 `config/servers.psd1` 的 `PawPotentialRoot` 配置，并由选择脚本导出为 `$env:VASP_PAW_POTENTIAL_ROOT`。不得从公共网页或 Materials Project 下载 POTCAR，也不得猜测 `*_pv`、`*_sv` 等势版本。
 - Materials Project API Key 只允许保存在 `config/local.psd1`，只能通过 `scripts/load_mp_config.ps1` 加载，不得回显、上传或写入命令参数。
 
 ## 资源与脚本
@@ -51,7 +51,7 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 ## 单任务准备与提交
 
 1. 明确服务器、任务名、计算类型、核数、时限、VASP 可执行文件和本地输入目录。
-2. 确认 `INCAR`、`POSCAR`、`KPOINTS`、`POTCAR` 来源；对新结构确认化学式、相、空间群、晶格、元素顺序和最近邻距离。
+2. 确认 `INCAR`、`POSCAR`、`KPOINTS`、`POTCAR` 来源；需要生成 POTCAR 时，使用所选服务器的 `$env:VASP_PAW_POTENTIAL_ROOT`，按 POSCAR 元素顺序拼接已经明确选择的势目录。对新结构确认化学式、相、空间群、晶格、元素顺序和最近邻距离。
 3. 使用当前服务器的 `SlurmBin`、oneAPI、MPI 和 VASP 配置生成脚本：
 
 ```powershell
