@@ -23,6 +23,7 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 - Materials Project：`references/materials-project.md`
 - SSH 初始化：`references/ssh-onboarding.md`
 - 规则扩展与维护：`references/rule-extension.md`
+- 规则系统教程：`references/rule-system-tutorial.md`
 - VASP 参数规则：`references/vasp-parameter-rules.md`
 - 选择服务器：`scripts/select_server.ps1 -Server <yang|lan>`
 - 检查 SSH：`scripts/check_ssh_hosts.ps1 -Server <yang|lan>`

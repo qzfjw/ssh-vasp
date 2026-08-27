@@ -104,6 +104,7 @@ Skill 推荐安装位置：
 | `config/rules/incidents/` | 已知问题、症状和预防措施 |
 | `scripts/lib/VaspRuleEngine.psm1` | 规则 Schema 校验和递归覆盖合并 |
 | `scripts/resolve_vasp_parameters.ps1` | 按 Relax、SCF、DOS、Band、Phonon 等任务解析推荐 INCAR/KPOINTS 参数 |
+| `references/rule-system-tutorial.md` | 经验、解释、算法和安全边界的工作原理、使用和维护教程 |
 | `scripts/setup_ssh_hosts.ps1` | 首次配置 SSH 别名、密钥和免密登录 |
 | `scripts/check_ssh_hosts.ps1` | 检查 SSH 解析和无人值守登录 |
 | `scripts/check_vasp_runtime.ps1` | 提交前检查 VASP 可执行文件、MPI 动态库和 oneAPI/MPI 版本 |
