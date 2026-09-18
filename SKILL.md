@@ -10,6 +10,7 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 - 仅从本机通过 OpenSSH 操作 `yang-login` 或 `lan-login`；禁止在登录节点直接运行 VASP 主计算。
 - 每个新任务必须由用户明确选择 `yang` 或 `lan`，任务生命周期内保持同一服务器。
 - 所有主计算必须通过 `sbatch` 提交；每个逻辑操作尽量合并为一次 SSH 调用。
+- 默认只做一次性查询和短时冒烟检查。VASP/SLURM 的“监控、定期检查、等待完成”不得自动转换为 Codex automation、heartbeat 或 `automation_update`；需要周期检查时，默认使用 Windows 任务计划程序 + PowerShell 外部脚本，通过 SSH 执行检查、记录每次结果，并仅在状态变化时通知用户。
 - 远程任务只允许位于 `~/vasp_codex/<job_name>`，任务名必须匹配 `^[A-Za-z0-9._-]+$`。
 - 默认不覆盖现有目录或文件；覆盖、删除、`scancel` 和重新提交前必须展示目标并获得明确确认。
 - POTCAR 只能来自用户有权使用的 VASP 势库；所选服务器的 PBE 5.4 PAW 势库根目录由 `config/servers.psd1` 的 `PawPotentialRoot` 配置，并由选择脚本导出为 `$env:VASP_PAW_POTENTIAL_ROOT`。不得从公共网页或 Materials Project 下载 POTCAR，也不得猜测 `*_pv`、`*_sv` 等势版本。
@@ -96,6 +97,14 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 4. 作业离开队列后按 `references/vasp-validation.md` 分类为 `COMPLETED`、`FAILED` 或 `UNKNOWN`。
 5. 不得仅凭“已不在队列”、单个 `reached required accuracy` 或单个错误关键词作结论。
 6. `ZBRENT` 只有在未正常结束、退出码非零或伴随明确失败时才作为失败证据；若后续成功 bracket、达到精度且存在正常尾部，不判失败。
+
+## 监控与 heartbeat 约束
+
+1. 用户说“监控”“定期检查”“等待完成”“稍后再看”等表述时，默认只执行当前轮检查并报告结果；不得创建、更新或调用 Codex automation、heartbeat 或 `automation_update`。
+2. 需要周期性检查时，默认实现为 Windows 任务计划程序 + PowerShell 外部脚本。脚本通过 SSH 查询 `squeue`、`sacct` 和必要的 VASP 输出，将每次检查结果写入本地 JSONL 日志。
+3. 仅在作业状态发生变化（例如 `QUEUED` 转为 `RUNNING`，或 `RUNNING` 转为 `COMPLETED`、`FAILED`、`UNKNOWN`）或需要用户决策时通知，不对每次轮询重复通知。
+4. 周期任务应使用独立的新 Codex 调用或短会话，不依赖长会话上下文；必要时把上次状态、日志摘要和任务路径作为输入。
+5. 仅当用户在当前请求中明确要求 Codex 原生 automation/heartbeat，并明确接受长会话兼容性风险时，才可考虑创建；不得自行建议或默认启用。
 
 ## 取消和重新提交
 

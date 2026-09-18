@@ -531,6 +531,32 @@ ssh $env:VASP_SSH_ALIAS $StatusCommand
 - `R`、`CG` 等归为 `RUNNING`。
 - 作业运行中只能报告当前进度，不能提前声称最终收敛。
 
+### 11.4 周期性监控与 heartbeat 约束
+
+用户提出“监控”“定期检查”“等待完成”“稍后再看”等要求时，Skill 默认只执行当前轮的一次性检查。不得自动创建或更新 Codex automation、heartbeat 或 `automation_update`。
+
+需要周期性检查时，应实现为外部方案：
+
+```text
+Windows 任务计划程序
+        ↓
+PowerShell 检查脚本
+        ↓
+SSH 执行 squeue / sacct 和必要的 VASP 输出检查
+        ↓
+每次结果写入本地 JSONL 日志
+        ↓
+仅在状态变化或需要决策时通知
+```
+
+例如用户要求：
+
+```text
+请每 5 分钟检查一次 yang-login 上的 SLURM/VASP 作业，但不要使用 Codex heartbeat 或 automation。请实现为 Windows 任务计划程序 + PowerShell 脚本，脚本通过 SSH 执行检查，并把每次结果写入日志；只有状态变化时才通知我。
+```
+
+周期任务应使用独立的新 Codex 调用或短会话，不依赖长会话上下文。必要时，把上次状态、日志摘要和任务路径作为输入。只有用户明确要求 Codex 原生 automation/heartbeat，并明确接受长会话兼容性风险时，才可考虑创建；默认不得建议或启用。
+
 ## 12. 查看进度与结果
 
 ```powershell
