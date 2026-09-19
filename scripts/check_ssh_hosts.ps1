@@ -2,7 +2,9 @@
 param(
     [string]$Server = 'all',
 
-    [string]$ServerConfigPath = $(if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '..\config\servers.local.psd1')) { Join-Path $PSScriptRoot '..\config\servers.local.psd1' } else { Join-Path $PSScriptRoot '..\config\servers.psd1' }),
+    [string]$ServerConfigPath = (Join-Path $PSScriptRoot '..\config\servers.psd1'),
+
+    [string]$LocalConfigPath = (Join-Path $PSScriptRoot '..\config\servers.local.psd1'),
 
     [switch]$SkipConnectionTest
 )
@@ -28,11 +30,9 @@ function Resolve-IdentityPath {
 if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
     throw 'OpenSSH client ssh.exe was not found.'
 }
-if (-not (Test-Path -LiteralPath $ServerConfigPath -PathType Leaf)) {
-    throw "Server config file does not exist: $ServerConfigPath"
-}
-
-$config = Import-PowerShellDataFile -LiteralPath $ServerConfigPath
+$serverConfigModule = Join-Path $PSScriptRoot 'lib\ServerConfig.psm1'
+Import-Module $serverConfigModule -Force
+$config = Import-VaspServerConfig -BasePath $ServerConfigPath -LocalPath $LocalConfigPath
 $serverKeys = if ($Server -ieq 'all') {
     @($config.Servers.Keys | Sort-Object)
 } else {

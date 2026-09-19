@@ -1,6 +1,6 @@
 ---
 name: fang-ssh-skill
-description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 或 lan-login 上创建、提交、查询、取消和续接 VASP/SLURM 作业；支持输入与结构校验、Relax→SCF→Band 依赖链、结果下载、带隙解析和能带 SVG 绘图。适用于用户要求在 Yang 或 Lan 服务器上准备、运行、监控、续算或分析 VASP 第一性原理计算；仅当结构获取属于该流程时使用 Materials Project。"
+description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 或 lan-login 上准备、提交、查询和安全取消 VASP/SLURM 作业；支持输入与结构校验、Relax→SCF→Band 依赖链、结果下载、带隙解析和能带 SVG 绘图。适用于用户要求在 Yang 或 Lan 服务器上准备、运行、一次性检查或分析 VASP 第一性原理计算；续算和周期监控遵循文档中的显式、人工确认流程；仅当结构获取属于该流程时使用 Materials Project。"
 ---
 
 # Yang/Lan HPC VASP Workflow
@@ -15,6 +15,7 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 - 默认不覆盖现有目录或文件；覆盖、删除、`scancel` 和重新提交前必须展示目标并获得明确确认。
 - POTCAR 只能来自用户有权使用的 VASP 势库；所选服务器的 PBE 5.4 PAW 势库根目录由 `config/servers.psd1` 的 `PawPotentialRoot` 配置，并由选择脚本导出为 `$env:VASP_PAW_POTENTIAL_ROOT`。不得从公共网页或 Materials Project 下载 POTCAR，也不得猜测 `*_pv`、`*_sv` 等势版本。
 - Materials Project API Key 只允许保存在 `config/local.psd1`，只能通过 `scripts/load_mp_config.ps1` 加载，不得回显、上传或写入命令参数。
+- `config/local.psd1` 必须由 `config/local.example.psd1` 创建并只包含本机占位配置；真实 API Key 不得出现在日志、聊天、版本库或命令行参数中。发现泄露时先撤销并轮换 Key。
 
 ## 资源与脚本
 
@@ -34,6 +35,8 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 - 输入与几何预检：`scripts/preflight_job.ps1`
 - 生成 Relax→SCF→Band 链：`scripts/render_band_chain.ps1`
 - 安全提交三阶段链：`scripts/submit_vasp_chain.ps1`
+- 查询作业与必要输出：`scripts/get_vasp_job.ps1 -Server <yang|lan> -JobId <id> [-JobName <name>]`
+- 安全取消作业：`scripts/cancel_vasp_job.ps1 -Server <yang|lan> -JobId <id> -ConfirmedTarget <server/id>`
 - 下载结果：`scripts/download_vasp_results.ps1`
 - 带隙与 SVG 分析：`scripts/analyze_band.cjs`
 
@@ -92,7 +95,7 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 ## 查询与状态分类
 
 1. 先确认任务服务器，不得凭 Job ID 猜测服务器。
-2. 优先查询 `squeue`，并在一次 SSH 调用中获取队列状态、SLURM 输出和必要的 VASP 输出尾部。
+2. 优先使用 `scripts/get_vasp_job.ps1`，在一次 SSH 调用中获取 `squeue`、`sacct`、SLURM 输出和必要的 VASP 输出尾部。
 3. 作业仍在队列时分类为 `QUEUED` 或 `RUNNING`，不得提前声称收敛。
 4. 作业离开队列后按 `references/vasp-validation.md` 分类为 `COMPLETED`、`FAILED` 或 `UNKNOWN`。
 5. 不得仅凭“已不在队列”、单个 `reached required accuracy` 或单个错误关键词作结论。
@@ -109,8 +112,8 @@ description: "通过 Windows 本机 OpenSSH 在用户明确选择的 yang-login 
 ## 取消和重新提交
 
 1. 明确服务器并验证 Job ID 为纯数字。
-2. 在该服务器执行 `squeue -j <job_id>`，展示名称、状态、运行时间和节点。
-3. 明确询问用户是否取消“该服务器上的该 Job ID”；用户确认后执行 `scancel` 并复查。
+2. 使用 `scripts/get_vasp_job.ps1` 展示名称、所有者、状态、运行时间和节点。
+3. 明确询问用户是否取消“该服务器上的该 Job ID”；用户确认后运行 `scripts/cancel_vasp_job.ps1`，并传入精确的 `-ConfirmedTarget <server/id>`。脚本还会拒绝取消其他用户的任务并在 `scancel` 后复查。
 4. 失败作业的重新提交必须使用新任务名和新目录；不得覆盖失败目录。重新提交前展示根因、修复内容和新目标，并获得确认。
 
 ## 结果下载与能带分析

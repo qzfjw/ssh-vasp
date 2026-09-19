@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
+if (!process.argv[2] || !process.argv[3] || !process.argv[4]) {
+  throw new Error('Usage: node analyze_band.cjs <scf-dir> <band-dir> <output-dir> [analysis-rules.json]');
+}
 const scfDir = path.resolve(process.argv[2]);
 const bandDir = path.resolve(process.argv[3]);
 const outputDir = path.resolve(process.argv[4]);
@@ -11,7 +14,7 @@ function loadAnalysisRules(file) {
   if (rules.schemaVersion !== 1 || !rules.plot || !Array.isArray(rules.supportedIspin)) {
     throw new Error(`Unsupported or invalid analysis rules: ${file}`);
   }
-  if (rules.bandEdgeModel !== 'closed-shell-electron-count') {
+  if (rules.bandEdgeModel !== 'occupation-threshold') {
     throw new Error(`Unsupported band-edge model: ${rules.bandEdgeModel}`);
   }
   return rules;
@@ -25,8 +28,12 @@ function readText(file) {
 
 function parseEigenval(file) {
   const lines = readText(file).split(/\r?\n/);
+  if (lines.length < 7) throw new Error(`EIGENVAL is too short: ${file}`);
   const counts = lines[5].trim().split(/\s+/).map(Number);
   const [nelect, nkpoints, nbands] = counts;
+  if (![nelect, nkpoints, nbands].every(Number.isFinite) || nkpoints < 1 || nbands < 2) {
+    throw new Error(`Invalid EIGENVAL counts in ${file}: ${lines[5]}`);
+  }
   let cursor = 6;
   const kpoints = [];
   const weights = [];
@@ -34,15 +41,23 @@ function parseEigenval(file) {
   const occupations = [];
   for (let k = 0; k < nkpoints; k += 1) {
     while (cursor < lines.length && !lines[cursor].trim()) cursor += 1;
+    if (cursor >= lines.length) throw new Error(`Unexpected end of EIGENVAL k-point data: ${file}`);
     const kp = lines[cursor].trim().split(/\s+/).map(Number);
     cursor += 1;
+    if (kp.length < 4 || kp.slice(0, 4).some((value) => !Number.isFinite(value))) {
+      throw new Error(`Invalid EIGENVAL k-point ${k + 1}: ${file}`);
+    }
     kpoints.push(kp.slice(0, 3));
     weights.push(kp[3]);
     const e = [];
     const o = [];
     for (let band = 0; band < nbands; band += 1) {
+      if (cursor >= lines.length) throw new Error(`Unexpected end of EIGENVAL band data: ${file}`);
       const fields = lines[cursor].trim().split(/\s+/).map(Number);
       cursor += 1;
+      if (fields.length < 3 || !Number.isFinite(fields[1]) || !Number.isFinite(fields[2])) {
+        throw new Error(`Invalid EIGENVAL band ${band + 1} at k-point ${k + 1}: ${file}`);
+      }
       e.push(fields[1]);
       o.push(fields[2]);
     }
@@ -54,8 +69,17 @@ function parseEigenval(file) {
 
 function parsePoscar(file) {
   const lines = readText(file).trim().split(/\r?\n/);
-  const scale = Number(lines[1].trim());
-  const lattice = lines.slice(2, 5).map((line) => line.trim().split(/\s+/).map(Number).map((value) => value * scale));
+  if (lines.length < 5) throw new Error(`POSCAR is too short: ${file}`);
+  const rawScale = Number(lines[1].trim());
+  if (!Number.isFinite(rawScale) || rawScale === 0) throw new Error(`Invalid POSCAR scale: ${file}`);
+  const rawLattice = lines.slice(2, 5).map((line) => line.trim().split(/\s+/).map(Number));
+  if (rawLattice.some((vector) => vector.length < 3 || vector.slice(0, 3).some((value) => !Number.isFinite(value)))) {
+    throw new Error(`Invalid POSCAR lattice vectors: ${file}`);
+  }
+  const rawVolume = dot(rawLattice[0].slice(0, 3), cross(rawLattice[1].slice(0, 3), rawLattice[2].slice(0, 3)));
+  if (!Number.isFinite(rawVolume) || rawVolume === 0) throw new Error(`POSCAR lattice volume is zero: ${file}`);
+  const scale = rawScale > 0 ? rawScale : Math.cbrt(Math.abs(rawScale / rawVolume));
+  const lattice = rawLattice.map((line) => line.slice(0, 3).map((value) => value * scale));
   return { lattice };
 }
 
@@ -88,25 +112,45 @@ function distance(a, b) {
 
 function parseFermi(file) {
   const matches = [...readText(file).matchAll(/E-fermi\s*:\s*([-+0-9.Ee]+)/g)];
-  return matches.length ? Number(matches[matches.length - 1][1]) : null;
+  if (!matches.length) return null;
+  const value = Number(matches[matches.length - 1][1]);
+  return Number.isFinite(value) ? value : null;
 }
 
 function bandEdges(dataset) {
-  const occupiedBand = Math.round(dataset.nelect / 2) - 1;
-  const conductionBand = occupiedBand + 1;
-  let vbm = { energy: -Infinity, kIndex: -1, bandIndex: occupiedBand };
-  let cbm = { energy: Infinity, kIndex: -1, bandIndex: conductionBand };
+  const allOccupations = dataset.occupations.flat();
+  const maximumOccupation = Math.max(...allOccupations);
+  const fullOccupation = maximumOccupation > 1.5 ? 2 : 1;
+  const partialOccupations = allOccupations.filter((occupation) => occupation > 0.05 && occupation < fullOccupation - 0.05);
+  if (partialOccupations.length) {
+    throw new Error('Partial band occupations were found. The result may be metallic or require a smearing-aware analysis.');
+  }
+  let vbm = { energy: -Infinity, kIndex: -1, bandIndex: -1 };
+  let cbm = { energy: Infinity, kIndex: -1, bandIndex: -1 };
   let directGap = { energy: Infinity, kIndex: -1 };
   for (let k = 0; k < dataset.nkpoints; k += 1) {
+    const occupied = [];
+    const unoccupied = [];
+    for (let band = 0; band < dataset.nbands; band += 1) {
+      const occupation = dataset.occupations[k][band];
+      if (occupation > 0.5) occupied.push(band);
+      else unoccupied.push(band);
+    }
+    if (!occupied.length || !unoccupied.length) continue;
+    const occupiedBand = occupied[occupied.length - 1];
+    const conductionBand = unoccupied[0];
     const valence = dataset.energies[k][occupiedBand];
     const conduction = dataset.energies[k][conductionBand];
     if (valence > vbm.energy) vbm = { energy: valence, kIndex: k, bandIndex: occupiedBand };
     if (conduction < cbm.energy) cbm = { energy: conduction, kIndex: k, bandIndex: conductionBand };
     if (conduction - valence < directGap.energy) directGap = { energy: conduction - valence, kIndex: k };
   }
+  if (vbm.kIndex < 0 || cbm.kIndex < 0) {
+    throw new Error('Could not identify occupied and unoccupied bands from EIGENVAL occupations. The result may be metallic or require spin-resolved analysis.');
+  }
   return {
-    occupiedBand: occupiedBand + 1,
-    conductionBand: conductionBand + 1,
+    occupiedBand: vbm.bandIndex + 1,
+    conductionBand: cbm.bandIndex + 1,
     vbm,
     cbm,
     indirectGap: cbm.energy - vbm.energy,
@@ -117,12 +161,19 @@ function bandEdges(dataset) {
 
 function parseBandPath(file) {
   const lines = readText(file).split(/\r?\n/);
+  if (lines.length < 6) throw new Error(`KPOINTS is too short: ${file}`);
   const pointsPerSegment = Number(lines[1].trim());
+  if (!Number.isInteger(pointsPerSegment) || pointsPerSegment < 2) {
+    throw new Error(`KPOINTS line-mode point count must be an integer >= 2: ${file}`);
+  }
   const endpointLines = lines.slice(4).filter((line) => line.trim());
   const endpoints = endpointLines.map((line) => {
     const parts = line.trim().split(/\s+/);
-    return { k: parts.slice(0, 3).map(Number), label: parts.slice(3).join(' ') || '' };
+    const k = parts.slice(0, 3).map(Number);
+    if (k.length < 3 || k.some((value) => !Number.isFinite(value))) throw new Error(`Invalid KPOINTS endpoint: ${line}`);
+    return { k, label: parts.slice(3).join(' ') || '' };
   });
+  if (!endpoints.length || endpoints.length % 2 !== 0) throw new Error(`KPOINTS line-mode endpoints must form pairs: ${file}`);
   const segments = [];
   for (let index = 0; index < endpoints.length; index += 2) {
     segments.push({ start: endpoints[index], end: endpoints[index + 1] });
@@ -131,7 +182,8 @@ function parseBandPath(file) {
 }
 
 function cleanLabel(label) {
-  return label.toLowerCase() === 'gamma' ? 'Γ' : label;
+  const normalized = label.replace(/^!\s*/, '').trim();
+  return normalized.toLowerCase() === 'gamma' ? 'Γ' : normalized;
 }
 
 function buildPathCoordinates(dataset, pathDefinition, reciprocal) {
@@ -139,6 +191,7 @@ function buildPathCoordinates(dataset, pathDefinition, reciprocal) {
   if (segments.length * pointsPerSegment !== dataset.nkpoints) {
     throw new Error(`Band path mismatch: ${segments.length} segments x ${pointsPerSegment} points != ${dataset.nkpoints}`);
   }
+  if (segments.length === 0) throw new Error('KPOINTS contains no line-mode segments.');
   const x = new Array(dataset.nkpoints).fill(0);
   const segmentIndex = new Array(dataset.nkpoints).fill(0);
   let offset = 0;
@@ -257,7 +310,6 @@ function buildSvg(dataset, edges, pathCoordinates, pathDefinition, fermiEnergy, 
 
 function main() {
   fs.mkdirSync(outputDir, { recursive: true });
-  if (!process.argv[4]) throw new Error('Usage: node analyze_band.cjs <scf-dir> <band-dir> <output-dir> [analysis-rules.json]');
   const outcarText = readText(path.join(bandDir, 'OUTCAR'));
   const ispin = Number((outcarText.match(/^\s*ISPIN\s*=\s*(\d+)/m) || [])[1] || 1);
   if (!analysisRules.supportedIspin.includes(ispin)) throw new Error(`ISPIN=${ispin} is disabled by the analysis rules.`);
@@ -325,8 +377,8 @@ function main() {
     `CBM: ${summary.plottedPath.cbmLocation.segment}, fraction ${summary.plottedPath.cbmLocation.segmentFraction.toFixed(6)}, k = ${summary.plottedPath.cbmLocation.fractionalKpoint.map((value) => value.toFixed(7)).join(' ')}`,
     `Direct/indirect on plotted path: ${summary.plottedPath.isDirect ? 'direct' : 'indirect'}`,
     '',
-    `SCF E-fermi: ${scfFermi.toFixed(6)} eV`,
-    `Band E-fermi: ${bandFermi.toFixed(6)} eV`,
+    `SCF E-fermi: ${scfFermi == null ? 'not found' : `${scfFermi.toFixed(6)} eV`}`,
+    `Band E-fermi: ${bandFermi == null ? 'not found' : `${bandFermi.toFixed(6)} eV`}`,
   ].join('\n');
   fs.writeFileSync(path.join(outputDir, 'band_gap_summary.txt'), summaryText + '\n');
   const rows = ['k_index,segment_index,path_distance_invA,kx,ky,kz,band_index,energy_ev,energy_minus_vbm_ev,occupation'];

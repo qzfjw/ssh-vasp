@@ -4,7 +4,7 @@
 
 - Skill 只使用固定 SSH 别名 `yang-login` 和 `lan-login`。
 - 每个用户的实际远程用户名、私钥路径和认证方式保存在 `%USERPROFILE%\.ssh\config`。
-- `config/servers.psd1` 保存组内共享的 Yang/Lan 地址和运行环境；个人覆盖写入不入库的 `config/servers.local.psd1`，且不保存用户密码或私钥。
+- `config/servers.psd1` 保存可共享的服务器地址和端口，不保存用户密码或私钥。
 - 配置向导只管理带 `# BEGIN CODEX VASP:` 和 `# END CODEX VASP:` 标记的配置块。
 - 已存在但未受管理的同名 `Host` 块必须由用户确认后才能接管。
 
@@ -13,8 +13,8 @@
 分别运行一次：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" -Server yang
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" -Server lan
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" -Server yang
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" -Server lan
 ```
 
 向导会：
@@ -32,7 +32,7 @@
 ## 使用已有密钥
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" `
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" `
     -Server yang `
     -IdentityFile "~/.ssh/my_existing_key"
 ```
@@ -44,7 +44,7 @@
 仅当用户明确接受风险并需要完全无人值守时使用：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" `
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" `
     -Server lan `
     -GenerateKey `
     -NoPassphrase
@@ -57,7 +57,7 @@
 如果公钥已经由管理员安装，可以跳过远端修改：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" `
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/setup_ssh_hosts.ps1" `
     -Server yang `
     -SkipKeyInstall
 ```
@@ -67,14 +67,14 @@
 检查全部服务器：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/check_ssh_hosts.ps1" -Server all |
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/check_ssh_hosts.ps1" -Server all |
     Format-Table -AutoSize
 ```
 
 检查单台服务器：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/check_ssh_hosts.ps1" -Server lan |
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/check_ssh_hosts.ps1" -Server lan |
     Format-List
 ```
 

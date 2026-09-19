@@ -62,7 +62,7 @@ $SkillRoot = Join-Path $HOME '.codex\skills\fang_ssh_skill'
 Copy-Item "$SkillRoot/config/local.example.psd1" "$SkillRoot/config/local.psd1"
 
 # 可选：只有需要覆盖公共服务器配置时才创建
-Copy-Item "$SkillRoot/config/servers.psd1" "$SkillRoot/config/servers.local.psd1"
+Copy-Item "$SkillRoot/config/servers.local.example.psd1" "$SkillRoot/config/servers.local.psd1"
 ```
 
 然后：
@@ -72,9 +72,9 @@ Copy-Item "$SkillRoot/config/servers.psd1" "$SkillRoot/config/servers.local.psd1
 3. 运行 `scripts/setup_ssh_hosts.ps1` 配置个人 SSH 用户名和密钥。
 4. 运行 `scripts/check_ssh_hosts.ps1` 与 `scripts/check_vasp_runtime.ps1` 验证环境。
 
-`config/servers.local.psd1` 和 `config/local.psd1` 已被 `.gitignore` 排除，不得提交到仓库。
+`config/servers.local.psd1` 和 `config/local.psd1` 已被 `.gitignore` 排除，不得提交到仓库。当前安装如果发现这两个文件已经存在，应检查其中是否有旧的真实 API Key；API Key 一旦出现在日志、聊天或版本库中，必须立即撤销并重新生成。
 
-更新已有安装时，如果已经创建 `config/servers.local.psd1`，需将公共配置中新增加的必需字段同步到该文件；例如本次新增的 `PawPotentialRoot`。选择脚本会在字段缺失时停止并报告，不会猜测势库路径。
+`select_server.ps1`、`check_ssh_hosts.ps1` 和 `setup_ssh_hosts.ps1` 会自动读取 `servers.psd1`，再合并可选的 `servers.local.psd1`；本地文件只需要填写覆盖项。公共配置新增字段后会继承公共值，若覆盖文件显式提供了不安全或未知字段，脚本会停止并报告，不会猜测势库路径。
 
 ## 1. 功能与目录
 
@@ -95,6 +95,7 @@ Skill 推荐安装位置：
 | 文件 | 用途 |
 |---|---|
 | `config/servers.psd1` | 组内共享的 Yang/Lan 服务器地址与运行环境配置 |
+| `config/servers.local.example.psd1` | 本机服务器覆盖配置模板 |
 | `config/servers.local.psd1` | 本机服务器地址和路径覆盖；不入库 |
 | `config/local.example.psd1` | Materials Project 本机配置模板 |
 | `config/local.psd1` | 本机 Materials Project API Key；不入库 |
@@ -113,6 +114,8 @@ Skill 推荐安装位置：
 | `scripts/preflight_job.ps1` | 检查输入、POTCAR 顺序和周期性最近邻距离 |
 | `scripts/render_band_chain.ps1` | 生成 Relax→SCF→Band 脚本、门控和清单 |
 | `scripts/submit_vasp_chain.ps1` | 预检、上传、依赖提交和启动冒烟检查 |
+| `scripts/get_vasp_job.ps1` | 查询指定作业的队列、历史状态和必要输出尾部 |
+| `scripts/cancel_vasp_job.ps1` | 校验所有者和精确确认字符串后安全取消作业 |
 | `scripts/download_vasp_results.ps1` | 安全下载一个或多个远程结果目录 |
 | `scripts/analyze_band.cjs` | 解析带隙并输出 CSV、JSON 和 SVG |
 | `scripts/load_mp_config.ps1` | 加载 Materials Project Key |
@@ -318,9 +321,11 @@ Key 保存在本机：
 
 ```powershell
 @{
-    MaterialsProjectApiKey = '<在本机填写API Key>'
+    MaterialsProjectApiKey = '<replace-locally>'
 }
 ```
+
+将 `<replace-locally>` 仅在本机替换为真实 API Key；不要把真实 Key 写入聊天、命令行、日志或版本库。
 
 使用时通过脚本加载，禁止直接输出 Key：
 
@@ -519,13 +524,10 @@ ssh $env:VASP_SSH_ALIAS $QueueCommand
 ### 11.3 查询指定 Job ID
 
 ```powershell
-& "$SkillRoot/scripts/select_server.ps1" -Server yang
-$JobId = '12345'
-if ($JobId -notmatch '^\d+$') { throw 'JobId must contain digits only.' }
-
-$StatusCommand = '{0}/squeue -j {1} -o "%.18i %.20j %.16u %.8T %.10M %.6D %R"; {0}/sacct -j {1} --format=JobID,JobName,User,Partition,State,ExitCode,Elapsed,Start,End -n -X' -f $env:VASP_SLURM_BIN, $JobId
-ssh $env:VASP_SSH_ALIAS $StatusCommand
+& "$SkillRoot/scripts/get_vasp_job.ps1" -Server yang -JobId 12345 -JobName my_relax
 ```
+
+省略 `-JobName` 时只查询 `squeue` 和 `sacct`；提供安全的任务名后还会读取对应目录中的 SLURM、OSZICAR 和 OUTCAR 尾部。
 
 - `PD`、`CF` 等归为 `QUEUED`。
 - `R`、`CG` 等归为 `RUNNING`。
@@ -587,20 +589,16 @@ ssh $env:VASP_SSH_ALIAS $InspectCommand
 取消前必须确认服务器、Job ID、作业名和状态。
 
 ```powershell
-& "$SkillRoot/scripts/select_server.ps1" -Server lan
-$JobId = '12345'
-if ($JobId -notmatch '^\d+$') { throw 'JobId must contain digits only.' }
-
-$CheckCommand = '{0}/squeue -j {1} -o "%.18i %.20j %.16u %.8T %.10M %R"' -f $env:VASP_SLURM_BIN, $JobId
-ssh $env:VASP_SSH_ALIAS $CheckCommand
+& "$SkillRoot/scripts/get_vasp_job.ps1" -Server lan -JobId 12345
 ```
 
 用户明确确认“取消 `lan-login / Job 12345`”后再运行：
 
 ```powershell
-$CancelCommand = '{0}/scancel {1} && {0}/squeue -j {1} -o "%.18i %.20j %.16u %.8T %.10M %R"' -f $env:VASP_SLURM_BIN, $JobId
-ssh $env:VASP_SSH_ALIAS $CancelCommand
+& "$SkillRoot/scripts/cancel_vasp_job.ps1" -Server lan -JobId 12345 -ConfirmedTarget 'lan/12345'
 ```
+
+脚本会检查任务仍在队列中、任务所有者与当前远程用户一致、确认字符串精确匹配，然后执行 `scancel` 并复查。
 
 不要仅凭 Job ID 猜测服务器，也不要批量取消或取消其他用户的任务。
 

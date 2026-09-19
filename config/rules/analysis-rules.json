@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "supportedIspin": [1],
-  "bandEdgeModel": "closed-shell-electron-count",
+  "bandEdgeModel": "occupation-threshold",
   "plot": {
     "width": 1500,
     "height": 950,

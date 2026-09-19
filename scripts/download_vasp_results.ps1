@@ -80,6 +80,9 @@ foreach ($line in $listing) {
         continue
     }
     if ($currentJob -and $line -match '^(?<name>[^|]+)\|(?<size>\d+)$') {
+        if ($matches.name -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "Remote job listing contains an unsafe file name: $($matches.name)"
+        }
         $remoteFiles[$currentJob] += [pscustomobject]@{
             Name = $matches.name
             Size = [int64]$matches.size

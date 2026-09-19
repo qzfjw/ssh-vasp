@@ -9,7 +9,9 @@ param(
 
     [string]$SshConfigPath = (Join-Path $HOME '.ssh\config'),
 
-    [string]$ServerConfigPath = $(if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '..\config\servers.local.psd1')) { Join-Path $PSScriptRoot '..\config\servers.local.psd1' } else { Join-Path $PSScriptRoot '..\config\servers.psd1' }),
+    [string]$ServerConfigPath = (Join-Path $PSScriptRoot '..\config\servers.psd1'),
+
+    [string]$LocalConfigPath = (Join-Path $PSScriptRoot '..\config\servers.local.psd1'),
 
     [switch]$GenerateKey,
 
@@ -77,11 +79,9 @@ if (-not (Get-Command ssh -ErrorAction SilentlyContinue)) {
 if (-not (Get-Command ssh-keygen -ErrorAction SilentlyContinue)) {
     throw 'OpenSSH client ssh-keygen.exe was not found.'
 }
-if (-not (Test-Path -LiteralPath $ServerConfigPath -PathType Leaf)) {
-    throw "Server config file does not exist: $ServerConfigPath"
-}
-
-$serverConfigData = Import-PowerShellDataFile -LiteralPath $ServerConfigPath
+$serverConfigModule = Join-Path $PSScriptRoot 'lib\ServerConfig.psm1'
+Import-Module $serverConfigModule -Force
+$serverConfigData = Import-VaspServerConfig -BasePath $ServerConfigPath -LocalPath $LocalConfigPath
 $matchingKeys = @(
     $serverConfigData.Servers.Keys | Where-Object {
         $_ -ieq $Server -or [string]$serverConfigData.Servers[$_].SshAlias -ieq $Server

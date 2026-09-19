@@ -10,3 +10,8 @@ downloaded_results/
 POTCAR
 WAVECAR
 CHGCAR
+
+# Local backups and generated configuration copies
+config/*.bak
+config/*~
+*.codex-backup-*

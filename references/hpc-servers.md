@@ -2,7 +2,7 @@
 
 ## 服务器定义
 
-组内公共服务器配置保存在 `config/servers.psd1`；存在 `config/servers.local.psd1` 时脚本优先加载本地覆盖：
+服务器列表保存在 `config/servers.psd1`：
 
 | 选择名 | SSH 别名 | 工作目录 |
 |---|---|---|
@@ -36,13 +36,13 @@
 每次新任务必须选择服务器，不设置默认值：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/select_server.ps1" -Server yang
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/select_server.ps1" -Server yang
 ```
 
 或：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/select_server.ps1" -Server lan
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/select_server.ps1" -Server lan
 ```
 
 脚本接受选择名或 SSH 别名，例如 `yang`、`yang-login`、`lan`、`lan-login`。成功后在当前 PowerShell 进程设置：

@@ -12,7 +12,7 @@
 加载配置：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/load_mp_config.ps1"
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/load_mp_config.ps1"
 ```
 
 加载脚本与使用 `mp-api` 的 Python 命令必须位于同一次 PowerShell 调用中，因为新的 shell 进程不会继承上一进程临时设置的环境变量。
@@ -20,7 +20,7 @@
 需要更换 Key 时，只修改：
 
 ```text
-%USERPROFILE%\.codex\skills\fang_ssh_skill\config\local.psd1
+C:\Users\Leo\.codex\skills\fang_ssh_skill\config\local.psd1
 ```
 
 保持以下结构，不要更改字段名：
@@ -44,7 +44,7 @@ python -m pip install --upgrade mp-api
 先加载配置，然后在同一次 PowerShell 调用中运行 Python 脚本：
 
 ```powershell
-& "$HOME/.codex/skills/fang_ssh_skill/scripts/load_mp_config.ps1"
+& "C:/Users/Leo/.codex/skills/fang_ssh_skill/scripts/load_mp_config.ps1"
 python ./download_structure.py
 ```
 

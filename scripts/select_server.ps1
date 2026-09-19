@@ -3,21 +3,16 @@ param(
     [Parameter(Mandatory)]
     [string]$Server,
 
-    [string]$ConfigPath = $(if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '..\config\servers.local.psd1')) { Join-Path $PSScriptRoot '..\config\servers.local.psd1' } else { Join-Path $PSScriptRoot '..\config\servers.psd1' })
+    [string]$ConfigPath = (Join-Path $PSScriptRoot '..\config\servers.psd1'),
+
+    [string]$LocalConfigPath = (Join-Path $PSScriptRoot '..\config\servers.local.psd1')
 )
 
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
-    throw "Server config file does not exist: $ConfigPath"
-}
-
-$resolvedConfigPath = (Resolve-Path -LiteralPath $ConfigPath).Path
-$config = Import-PowerShellDataFile -LiteralPath $resolvedConfigPath
-
-if (-not $config.Servers -or $config.Servers.Count -eq 0) {
-    throw "No servers are defined in: $resolvedConfigPath"
-}
+$serverConfigModule = Join-Path $PSScriptRoot 'lib\ServerConfig.psm1'
+Import-Module $serverConfigModule -Force
+$config = Import-VaspServerConfig -BasePath $ConfigPath -LocalPath $LocalConfigPath
 
 $matchingKeys = @(
     $config.Servers.Keys | Where-Object {
@@ -65,6 +60,26 @@ foreach ($settingName in $requiredSettings) {
     if ([string]::IsNullOrWhiteSpace([string]$effectiveSettings[$settingName])) {
         throw "Setting '$settingName' is missing for server '$serverKey'."
     }
+}
+
+if ([string]$effectiveSettings.WorkRoot -notmatch '^[A-Za-z0-9._/-]+$' -or
+    [string]$effectiveSettings.WorkRoot -match '(^|/)\.\.(/|$)' -or
+    [string]$effectiveSettings.WorkRoot -match '^/') {
+    throw "WorkRoot must be a safe relative path without parent-directory components."
+}
+
+foreach ($settingName in @('SlurmBin', 'VaspBin', 'OneApiSetup', 'MpiLauncher', 'PawPotentialRoot')) {
+    if ([string]$effectiveSettings[$settingName] -notmatch '^[A-Za-z0-9._/@:+-]+$') {
+        throw "Setting '$settingName' contains characters unsafe for shell templates."
+    }
+}
+
+if ([string]$effectiveSettings.Partition -notmatch '^[A-Za-z0-9._-]+$') {
+    throw "Partition contains characters unsafe for SLURM submission: $($effectiveSettings.Partition)"
+}
+
+if ([string]$effectiveSettings.VaspExecutable -notmatch '^(vasp_std|vasp_gam|vasp_ncl)$') {
+    throw "VaspExecutable must be vasp_std, vasp_gam, or vasp_ncl."
 }
 
 $env:VASP_SERVER_KEY = $serverKey
